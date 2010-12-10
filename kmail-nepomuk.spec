@@ -7,7 +7,7 @@
 Name: kmail-nepomuk
 Summary: KMail enhanced with semantic capabilities
 Version: 4.3.2
-Release: %mkrel 3
+Release: %mkrel 4
 Epoch: 2
 Group: Graphical desktop/KDE
 License: GPL
