@@ -1,0 +1,38 @@
+# 
+# SVN commit 1033121 by tmcguire:
+# 
+# Backport r1029796 by tmcguire from trunk to the 4.3 branch:
+# 
+# Merged revisions 1027247 via svnmerge from
+# svn+ssh://tmcguire@svn.kde.org/home/kde/branches/kdepim/enterprise4/kdepim
+# 
+# ................
+#  r1027247 | winterz | 2009-09-23 18:49:31 +0200 (Wed, 23 Sep 2009) | 10 lines
+# 
+#  Merged revisions 1027235 via svnmerge from
+#  https://svn.kde.org/home/kde/branches/kdepim/enterprise/kdepim
+# 
+#  ........
+#    r1027235 | winterz | 2009-09-23 12:22:11 -0400 (Wed, 23 Sep 2009) | 3 lines
+# 
+#    in setHolidaysMasks(), avoid a crash if the selecteddates QList is empty.
+#    MERGE: e4,trunk,4.3
+#  ........
+# ...............
+#
+
+Index: korganizer/views/agendaview/koagendaview.cpp
+===================================================================
+--- korganizer/views/agendaview/koagendaview.cpp	(révision 1033120)
++++ korganizer/views/agendaview/koagendaview.cpp	(révision 1033121)
+@@ -1523,6 +1523,10 @@
+ 
+ void KOAgendaView::setHolidayMasks()
+ {
++  if ( mSelectedDates.isEmpty() ) {
++    return;
++  }
++
+   mHolidayMask.resize( mSelectedDates.count() + 1 );
+ 
+   for ( int i = 0; i < mSelectedDates.count(); ++i ) {

@@ -1,0 +1,49 @@
+# 
+# SVN commit 1033312 by tmcguire:
+# 
+# Backport r1033259 by tmcguire from trunk to the 4.3 branch:
+# 
+# SVN_MERGE
+# Merged revisions 1030121 via svnmerge from
+# svn+ssh://tmcguire@svn.kde.org/home/kde/branches/kdepim/enterprise4/kdepim
+# 
+# ................
+#  r1030121 | winterz | 2009-10-01 17:59:09 +0200 (Thu, 01 Oct 2009) | 11 lines
+# 
+#  Merged revisions 1030101 via svnmerge from
+#  https://svn.kde.org/home/kde/branches/kdepim/enterprise/kdepim
+# 
+#  ........
+#    r1030101 | mutz | 2009-10-01 11:23:09 -0400 (Thu, 01 Oct 2009) | 3 lines
+# 
+#    KMReaderWin::objectTreeToDecryptedMsg: fix for PGP/MIME messages
+# 
+#    (and probably S/MIME message with mp/encrypted, but I haven't seen those anywhere yet - KMail certainly doesn't create them)
+#  ........
+# ................
+
+Index: kmail/kmreaderwin.cpp
+===================================================================
+--- kmail/kmreaderwin.cpp	(révision 1033311)
++++ kmail/kmreaderwin.cpp	(révision 1033312)
+@@ -221,18 +221,8 @@
+             kDebug() <<"signed";
+             break;
+           case DwMime::kSubtypeEncrypted: {
+-              kDebug() <<"encrypted";
+-              if ( child ) {
+-                /*
+-                    ATTENTION: This code is to be replaced by the new 'auto-detect' feature. --------------------------------------
+-                */
+-                partNode* data =
+-                  child->findType( DwMime::kTypeApplication, DwMime::kSubtypeOctetStream, false, true );
+-                if ( !data )
+-                  data = child->findType( DwMime::kTypeApplication, DwMime::kSubtypePkcs7Mime, false, true );
+-                if ( data && data->firstChild() )
+-                  dataNode = data;
+-              }
++              if ( child )
++                dataNode = child;
+             }
+             break;
+           default :

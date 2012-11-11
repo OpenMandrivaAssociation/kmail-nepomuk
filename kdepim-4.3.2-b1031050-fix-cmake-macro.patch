@@ -1,0 +1,27 @@
+# 
+# SVN commit 1031050 by winterz:
+# 
+# Backport r1031046 by winterz from trunk to the 4.3 branch:
+# 
+# we set KMAIL_SUPPORTED if we are building KMail.  which is good.
+# however we never added KMAIL_SUPPORTED to the defined compiler macros.  which is bad.
+# 
+# Now that we define KMAIL_SUPPORTED, we can actually see a list of accounts to synchronize
+# in the "Sync All" tool submenu.
+# 
+# MERGE: e4,4.3
+# 
+
+Index: CMakeLists.txt
+===================================================================
+--- CMakeLists.txt      (révision 1031049)
++++ CMakeLists.txt      (révision 1031050)
+@@ -160,6 +160,7 @@
+     macro_optional_add_subdirectory(kmail)
+     # If kmail is compiled, KMAIL_SUPPORTED is true (used in several places)
+     macro_bool_to_01(BUILD_kmail KMAIL_SUPPORTED)
++    add_definitions(-DKMAIL_SUPPORTED)
+     macro_optional_add_subdirectory(kmailcvt)
+     macro_optional_add_subdirectory(ksendemail)
+     macro_optional_add_subdirectory(korganizer)
+

@@ -1,0 +1,36 @@
+# 
+# SVN commit 1033304 by tmcguire:
+# 
+# Backport r1033258 by tmcguire from trunk to the 4.3 branch:
+# 
+# Merged revisions 1030068 via svnmerge from
+# svn+ssh://tmcguire@svn.kde.org/home/kde/branches/kdepim/enterprise4/kdepim
+# 
+# ................
+#  r1030068 | winterz | 2009-10-01 15:36:24 +0200 (Thu, 01 Oct 2009) | 10 lines
+# 
+#  Merged revisions 1030061 via svnmerge from
+#  https://svn.kde.org/home/kde/branches/kdepim/enterprise/kdepim
+# 
+#  ........
+#    r1030061 | winterz | 2009-10-01 09:25:53 -0400 (Thu, 01 Oct 2009) | 3 lines
+# 
+#    another crash guard for passing invalid dates to setHolidayMasks()
+#    MERGE: e4,trunk,4.3
+#  ........
+# ................
+# 
+
+Index: korganizer/views/agendaview/koagendaview.cpp
+===================================================================
+--- korganizer/views/agendaview/koagendaview.cpp	(révision 1033303)
++++ korganizer/views/agendaview/koagendaview.cpp	(révision 1033304)
+@@ -1523,7 +1523,7 @@
+ 
+ void KOAgendaView::setHolidayMasks()
+ {
+-  if ( mSelectedDates.isEmpty() ) {
++  if ( mSelectedDates.isEmpty() || !mSelectedDates[0].isValid() ) {
+     return;
+   }
+ 

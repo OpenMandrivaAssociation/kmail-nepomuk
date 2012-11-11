@@ -1,0 +1,52 @@
+# 
+# SVN commit 1033122 by tmcguire:
+# 
+# Backport r1029799 by tmcguire from trunk to the 4.3 branch:
+# 
+# Merged revisions 1027946 via svnmerge from
+# svn+ssh://tmcguire@svn.kde.org/home/kde/branches/kdepim/enterprise4/kdepim
+# 
+# ................
+#  r1027946 | tmcguire | 2009-09-25 10:36:37 +0200 (Fri, 25 Sep 2009) | 10 lines
+# 
+#  Merged revisions 1027157 via svnmerge from
+#  svn+ssh://tmcguire@svn.kde.org/home/kde/branches/kdepim/enterprise/kdepim
+# 
+#  ........
+#    r1027157 | tmcguire | 2009-09-23 14:26:40 +0200 (Wed, 23 Sep 2009) | 3 lines
+# 
+#    Always set the identity when answering an invitation, as we need that to figure things
+#    like the transport out.
+#  ........
+# ................
+# 
+
+Index: kmail/callback.cpp
+===================================================================
+--- kmail/callback.cpp	(révision 1033121)
++++ kmail/callback.cpp	(révision 1033122)
+@@ -98,16 +98,19 @@
+     * has been sent successfully. Set a link header which accomplishes that. */
+     msg->link( mMsg, MessageStatus::statusDeleted() );
+ 
++  // Try and match the receiver with an identity.
++  // Setting the identity here is important, as that is used to select the correct
++  // transport later
++  const KPIMIdentities::Identity &identity = kmkernel->identityManager()->identityForAddress( receiver() );
++  if ( identity != KPIMIdentities::Identity::null() ) {
++    msg->setHeaderField( "X-KMail-Identity", QString::number( identity.uoid() ) );
++  }
++
+   // Outlook will only understand the reply if the From: header is the
+   // same as the To: header of the invitation message.
+   if ( !GlobalSettings::self()->legacyMangleFromToHeaders() ) {
+-    // Try and match the receiver with an identity
+-    const KPIMIdentities::Identity &identity =
+-      kmkernel->identityManager()->identityForAddress( receiver() );
+     if ( identity != KPIMIdentities::Identity::null() ) {
+-      // Identity found. Use this
+       msg->setFrom( identity.fullEmailAddr() );
+-      msg->setHeaderField( "X-KMail-Identity", QString::number( identity.uoid() ) );
+     }
+     // Remove BCC from identity on ical invitations (https://intevation.de/roundup/kolab/issue474)
+     msg->setBcc( "" );

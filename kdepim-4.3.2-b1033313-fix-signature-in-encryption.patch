@@ -1,0 +1,80 @@
+
+# SVN commit 1033313 by tmcguire:
+# 
+# Backport r1033264 by tmcguire from trunk to the 4.3 branch:
+# 
+# Merged revisions 1030122 via svnmerge from
+# svn+ssh://tmcguire@svn.kde.org/home/kde/branches/kdepim/enterprise4/kdepim
+# 
+# ................
+#  r1030122 | winterz | 2009-10-01 18:00:24 +0200 (Thu, 01 Oct 2009) | 11 lines
+# 
+#  Merged revisions 1030105 via svnmerge from
+#  https://svn.kde.org/home/kde/branches/kdepim/enterprise/kdepim
+# 
+#  ........
+#    r1030105 | mutz | 2009-10-01 11:26:23 -0400 (Thu, 01 Oct 2009) | 3 lines
+# 
+#    KMReaderWin::objectTreeToDecryptedMsg: fix S/MIME signatures being invalidated by the process of stripping the encryption
+# 
+#    This is very likely an incomplete fix.
+#  ........
+# ................
+# 
+
+Index: kmail/kmreaderwin.cpp
+===================================================================
+--- kmail/kmreaderwin.cpp	(révision 1033312)
++++ kmail/kmreaderwin.cpp	(révision 1033313)
+@@ -175,6 +175,7 @@
+     partNode* dataNode = curNode;
+     partNode * child = node->firstChild();
+     bool bIsMultipart = false;
++    bool bKeepPartAsIs = false;
+ 
+     switch( curNode->type() ){
+       case DwMime::kTypeText: {
+@@ -217,8 +218,9 @@
+           case DwMime::kSubtypeParallel:
+             kDebug() <<"parallel";
+             break;
+-          case DwMime::kSubtypeSigned:
+-            kDebug() <<"signed";
++          case DwMime::kSubtypeSigned: {
++              bKeepPartAsIs = true;
++            }
+             break;
+           case DwMime::kSubtypeEncrypted: {
+               if ( child )
+@@ -261,6 +263,12 @@
+           case DwMime::kSubtypePgpSignature:
+             kDebug() <<"pgp signed";
+             break;
++          case DwMime::kSubtypePkcs7Signature: {
++              // note: subtype Pkcs7Signature specifies a signature part
++              //       which we do NOT want to remove!
++              bKeepPartAsIs = true;
++            }
++            break;
+           case DwMime::kSubtypePkcs7Mime: {
+               kDebug() <<"pkcs7 mime";
+               // note: subtype Pkcs7Mime can also be signed
+@@ -342,6 +350,10 @@
+         }
+       }
+ 
++      if ( bKeepPartAsIs ) {
++          resultingData += dataNode->encodedBody();
++      } else {
++
+       // B) Store the body of this part.
+       if( headers && bIsMultipart && dataNode->firstChild() )  {
+         kDebug() <<"is valid Multipart, processing children:";
+@@ -377,6 +389,7 @@
+         kDebug() <<"is Simple part or invalid Multipart, storing body data .. DONE";
+         resultingData += part->Body().AsString().c_str();
+       }
++      }
+     } else {
+       kDebug() <<"dataNode != curNode:  Replace curNode by dataNode.";
+       bool rootNodeReplaceFlag = weAreReplacingTheRootNode || !curNode->parentNode();

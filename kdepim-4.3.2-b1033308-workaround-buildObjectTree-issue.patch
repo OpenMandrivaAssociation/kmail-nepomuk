@@ -1,0 +1,61 @@
+# 
+# SVN commit 1033308 by tmcguire:
+# 
+# Backport r1033242 by tmcguire from trunk to the 4.3 branch:
+# 
+# SVN_MERGE
+# Merged revisions 1029632 via svnmerge from
+# svn+ssh://tmcguire@svn.kde.org/home/kde/branches/kdepim/enterprise4/kdepim
+# 
+# ................
+#  r1029632 | winterz | 2009-09-30 14:29:22 +0200 (Wed, 30 Sep 2009) | 9 lines
+# 
+#  Merged revisions 1029609 via svnmerge from
+#  https://svn.kde.org/home/kde/branches/kdepim/enterprise/kdepim
+# 
+#  ........
+#    r1029609 | tmcguire | 2009-09-30 06:42:06 -0400 (Wed, 30 Sep 2009) | 1 line
+# 
+#    Work around a problem with buildObjectTree() modifing parent nodes by calling that before setting the parent.
+#  ........
+# ................
+# 
+
+Index: kmail/partNode.h
+===================================================================
+--- kmail/partNode.h	(révision 1033307)
++++ kmail/partNode.h	(révision 1033308)
+@@ -203,7 +203,7 @@
+         mMimePartTreeItem = item;
+     }
+ 
+-    KMMimePartTreeItem* mimePartTreeItem() {
++    KMMimePartTreeItem* mimePartTreeItem() const {
+         return mMimePartTreeItem;
+     }
+ 
+Index: kmail/objecttreeparser.cpp
+===================================================================
+--- kmail/objecttreeparser.cpp	(révision 1033307)
++++ kmail/objecttreeparser.cpp	(révision 1033308)
+@@ -206,6 +206,11 @@
+ 
+     partNode* parentNode = &startNode;
+     partNode* newNode = new partNode(false, myBody);
++
++    // Build the object tree of the new node before setting the parent, as otherwise
++    // buildObjectTree() would erronously modify the parents as well
++    newNode->buildObjectTree( false );
++
+     if ( append && parentNode->firstChild() ) {
+       parentNode = parentNode->firstChild();
+       while( parentNode->nextSibling() )
+@@ -214,8 +219,6 @@
+     } else
+       parentNode->setFirstChild( newNode );
+ 
+-    newNode->buildObjectTree( false );
+-
+     if ( startNode.mimePartTreeItem() ) {
+       newNode->fillMimePartTree( startNode.mimePartTreeItem(), 0,
+                                  QString(), QString(), QString(), 0,

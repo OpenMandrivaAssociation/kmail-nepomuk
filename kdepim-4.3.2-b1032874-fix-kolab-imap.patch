@@ -1,0 +1,28 @@
+#
+# SVN commit 1032874 by dfaure:
+# 
+# Backport: Make kontact the imap backend for the kolab resource.
+#
+ 
+Index: kmail/KMail.desktop
+===================================================================
+--- kmail/KMail.desktop	(révision 1032873)
++++ kmail/KMail.desktop	(révision 1032874)
+@@ -139,5 +139,5 @@
+ X-KDE-StartupNotify=true
+ X-DBUS-StartupType=Unique
+ X-DBUS-ServiceName=org.kde.kmail
+-X-KDE-ServiceTypes=DBUS/ResourceBackend/IMAP,DBUS/Mailer
++X-KDE-ServiceTypes=DBUS/Mailer
+ Categories=Qt;KDE;Network;Email;
+Index: kontact/src/Kontact.desktop
+===================================================================
+--- kontact/src/Kontact.desktop	(révision 1032873)
++++ kontact/src/Kontact.desktop	(révision 1032874)
+@@ -124,5 +124,6 @@
+ X-KDE-StartupNotify=true
+ X-DBUS-StartupType=Unique
+ X-DBUS-ServiceName=org.kde.kontact
++X-KDE-ServiceTypes=DBUS/ResourceBackend/IMAP
+ Categories=Qt;KDE;Network;Email;
+ X-DocPath=kontact/index.html

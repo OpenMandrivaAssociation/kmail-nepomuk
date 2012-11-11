@@ -1,0 +1,53 @@
+Index: wizards/groupwarewizard.desktop
+===================================================================
+--- wizards/groupwarewizard.desktop
++++ wizards/groupwarewizard.desktop	2009-09-25 09:11:00.000000000 +0200
+@@ -51,4 +51,5 @@
+ Icon=kontact
+ Terminal=false
+ X-KDE-StartupNotify=true
+-Categories=Qt;KDE;Utility;X-KDE-Utilities-PIM;
++Categories=Qt;KDE;X-KDE-Utilities-PIM;Network;Email;
++OnlyShowIn=KDE;
+Index: korganizer/korganizer.desktop
+===================================================================
+--- korganizer/korganizer.desktop
++++ korganizer/korganizer.desktop	2009-09-25 09:12:09.000000000 +0200
+@@ -139,4 +139,4 @@
+ X-KDE-StartupNotify=true
+ X-DBUS-StartupType=Unique
+ X-DBUS-ServiceName=org.kde.korganizer
+-Categories=Qt;KDE;Office;Calendar;
+++Categories=Qt;KDE;Network;Email;
+Index: kaddressbook/kaddressbook.desktop
+===================================================================
+--- kaddressbook/kaddressbook.desktop
++++ kaddressbook/kaddressbook.desktop	2009-09-25 09:12:37.000000000 +0200
+@@ -85,4 +85,4 @@
+ X-DBUS-StartupType=Unique
+ MimeType=text/directory;text/x-ldif;
+ X-KDE-ServiceTypes=DBUS/AddressBook
+-Categories=Qt;KDE;Office;ContactManagement;
++Categories=Qt;KDE;Network;Email;
+Index: ktimetracker/support/ktimetracker.desktop
+===================================================================
+--- ktimetracker/support/ktimetracker.desktop
++++ ktimetracker/support/ktimetracker.desktop	2009-09-25 09:13:12.000000000 +0200
+@@ -71,4 +71,5 @@
+ Terminal=false
+ X-KDE-StartupNotify=true
+ X-DBUS-StartupType=Multi
+-Categories=Qt;KDE;Utility;Office;Monitor;X-KDE-Utilities-PIM;
++Categories=Qt;KDE;X-KDE-Utilities-PIM;Calendar;
++OnlyShowIn=KDE
+Index: kontact/src/Kontact.desktop
+===================================================================
+--- kontact/src/Kontact.desktop
++++ kontact/src/Kontact.desktop	2009-09-25 09:13:39.000000000 +0200
+@@ -71,5 +71,5 @@
+ X-KDE-StartupNotify=true
+ X-DBUS-StartupType=Unique
+ X-DBUS-ServiceName=org.kde.kontact
+-Categories=Qt;KDE;Office;ProjectManagement;
++Categories=Qt;KDE;Network;Email;
+ X-DocPath=kontact/index.html

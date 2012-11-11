@@ -1,0 +1,19 @@
+#
+# load catalog with translations for kdatepickerpopup
+# CCMAIL:dev@staerk.de
+#
+
+Index: ktimetracker/ktimetrackerpart.cpp
+===================================================================
+--- ktimetracker/ktimetrackerpart.cpp   (révision 1031715)
++++ ktimetracker/ktimetrackerpart.cpp   (révision 1031716)
+@@ -52,7 +52,7 @@
+     : KParts::ReadWritePart(parent)
+ {
+   KGlobal::locale()->insertCatalog("ktimetracker");
+-
++  KGlobal::locale()->insertCatalog("libkdepim");
+   // we need an instance
+   setComponentData( ktimetrackerPartFactory::componentData() );
+
+

@@ -1,0 +1,105 @@
+Index: kmail/kmkernel.cpp
+===================================================================
+--- kmail/kmkernel.cpp
++++ kmail/kmkernel.cpp	2009-06-26 23:24:34.000000000 +0200
+@@ -1307,7 +1307,7 @@
+ }
+ 
+ //-----------------------------------------------------------------------------
+-void KMKernel::initFolders(KConfig* cfg)
++void KMKernel::initFolders(KConfig* cfg, bool _firstMessage)
+ {
+   QString name;
+   KConfigGroup group(cfg,"General");
+@@ -1318,7 +1318,8 @@
+   // in the base folder directory.
+   //if (name.isEmpty()) name = getenv("MAIL");
+ 
+-  if (name.isEmpty()) name = I18N_NOOP("inbox");
++  bool inboxIsEmpty = name.isEmpty();
++  if (inboxIsEmpty) name = I18N_NOOP("inbox");
+ 
+   the_inboxFolder  = (KMFolder*)the_folderMgr->findOrCreate(name);
+ 
+@@ -1326,6 +1327,7 @@
+     emergencyExit( i18n("You do not have read/write permission to your inbox folder.") );
+   }
+ 
++  if (_firstMessage) dbusAddMessage(name, firstMessage());
+   the_inboxFolder->setSystemFolder(true);
+   if ( the_inboxFolder->userWhoField().isEmpty() )
+     the_inboxFolder->setUserWhoField( QString() );
+@@ -1439,6 +1441,9 @@
+   // moved up here because KMMessage::stripOffPrefixes is used below
+   KMMessage::readConfig();
+ 
++  QDir dirMail = QDir::home();
++  bool _firstMessage = the_firstStart && !QFile("/etc/sysconfig/oem").exists();
++
+   the_undoStack     = new UndoStack(20);
+   the_folderMgr     = new KMFolderMgr(foldersPath);
+   the_imapFolderMgr = new KMFolderMgr( KMFolderImap::cacheLocation(), KMImapDir);
+@@ -1454,7 +1459,7 @@
+   the_popFilterMgr     = new KMFilterMgr(true);
+   the_filterActionDict = new KMFilterActionDict;
+ 
+-  initFolders(cfg);
++  initFolders(cfg,_firstMessage);
+   the_acctMgr->readConfig();
+   the_filterMgr->readConfig();
+   the_popFilterMgr->readConfig();
+@@ -1493,6 +1498,32 @@
+ #endif
+ }
+ 
++
++QString KMKernel::firstMessage()
++{
++    QString first( "/usr/share/mdk/mail/text/mail-%1" );
++    QString language = QString::fromLocal8Bit(getenv("LANGUAGE")) ;
++    QStringList langList = language.split(":");
++    bool languageFound = false;
++    for ( QStringList::Iterator it = langList.begin(); it != langList.end(); ++it )
++    {
++        QString tmpFile = first.arg(*it);
++        if( QFile::exists(tmpFile))
++        {
++            first = tmpFile;
++            languageFound = true;
++            break;
++        }
++    }
++   if ( !languageFound )
++   {
++       first = QString("/usr/share/mdk/mail/text/mail-en" );
++       if( !QFile::exists(first))
++           first="";
++   }
++   return first;
++}
++
+ void KMKernel::readConfig()
+ {
+   //Needed here, since this function is also called when the configuration
+Index: kmail/kmkernel.h
+===================================================================
+--- kmail/kmkernel.h
++++ kmail/kmkernel.h	2009-06-26 23:18:42.000000000 +0200
+@@ -265,7 +265,7 @@
+   void cleanupImapFolders();
+   void testDir(const char *_name);
+   void recoverDeadLetters();
+-  void initFolders(KConfig* cfg);
++  void initFolders(KConfig* cfg, bool _firstMessage = false);
+   void closeAllKMailWindows();
+   void cleanup(void);
+   void quit();
+@@ -323,6 +323,8 @@
+   /** return the pointer to the identity manager */
+   KPIMIdentities::IdentityManager *identityManager();
+ 
++  QString firstMessage();
++
+   JobScheduler* jobScheduler() { return mJobScheduler; }
+ 
+   /** Expire all folders, used for the gui action */

@@ -1,0 +1,18 @@
+#
+# SVN commit 1031368 by aacid:
+# 
+# Add the libkdepim catalog
+# CCMAIL: djarvie@kde.org
+# BUGS: 209401
+# 
+
+--- kalarm/kalarmapp.cpp~	2009-08-27 10:18:27.000000000 +0200
++++ kalarm/kalarmapp.cpp	2009-10-12 00:16:43.000000000 +0200
+@@ -116,6 +116,7 @@
+ 	  mAlarmsEnabled(true),
+ 	  mSpeechEnabled(false)
+ {
++    KGlobal::locale()->insertCatalog("libkdepim");
+ 	kDebug();
+ #ifndef NDEBUG
+ 	KAlarm::setTestModeConditions();

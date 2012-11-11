@@ -1,0 +1,20 @@
+#
+# SVN commit 1031538 by lueck:
+# 
+# load catalog with translations for kdatepickerpopup
+# 
+
+Index: knotes/main.cpp
+===================================================================
+--- knotes/main.cpp	(révision 1031537)
++++ knotes/main.cpp	(révision 1031538)
+@@ -62,8 +62,8 @@
+   // Create Application
+ 
+   Application app;
++  KGlobal::locale()->insertCatalog("libkdepim");
+ 
+-
+   remove_sm_from_client_leader();
+ 
+   return app.exec();

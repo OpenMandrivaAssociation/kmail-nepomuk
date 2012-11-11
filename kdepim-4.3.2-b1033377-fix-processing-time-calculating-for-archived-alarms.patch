@@ -1,0 +1,24 @@
+# 
+# SVN commit 1033377 by djarvie:
+# 
+# Don't waste processing time calculating next trigger time for archived alarms
+# 
+#  M  +2 -2      alarmevent.cpp
+# 
+
+Index: kalarm/alarmevent.cpp
+===================================================================
+--- kalarm/alarmevent.cpp	(révision 1033376)
++++ kalarm/alarmevent.cpp	(révision 1033377)
+@@ -1068,9 +1068,9 @@
+ 		return;
+ 	}
+ 	mChanged = false;
+-	if (!mTemplateName.isEmpty())
++	if (mCategory == KCalEvent::ARCHIVED  ||  !mTemplateName.isEmpty())
+ 	{
+-		// It's a template
++		// It's a template or archived
+ 		mAllTrigger = mMainTrigger = mAllWorkTrigger = mMainWorkTrigger = KDateTime();
+ 	}
+ 	else if (mDeferral > 0  &&  mDeferral != REMINDER_DEFERRAL)

@@ -1,0 +1,1044 @@
+diff -rupN --exclude=build kdepim-4.3.2/kmail/annotationwidget.cpp kdepim-4.3.2-mod/kmail/annotationwidget.cpp
+--- kdepim-4.3.2/kmail/annotationwidget.cpp	1970-01-01 01:00:00.000000000 +0100
++++ kdepim-4.3.2-mod/kmail/annotationwidget.cpp	2009-10-27 10:56:50.000000000 +0100
+@@ -0,0 +1,79 @@
++/*
++  This file is part of KMail, the KDE mail client.
++  Copyright (c) 2009 Sebastian Trueg <trueg@kde.org>
++
++  This program is free software; you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation; either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License along
++  with this program; if not, write to the Free Software Foundation, Inc.,
++  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
++*/
++
++#include "annotationwidget.h"
++
++#include <nepomuk/resourceannotationmodel.h>
++#include <nepomuk/annotationrelevancefiltermodel.h>
++#include <nepomuk/annotation.h>
++#include <nepomuk/resourcemanager.h>
++
++#include <QHBoxLayout>
++#include <QLabel>
++#include <QListView>
++#include <KDebug>
++
++#include <KLocale>
++
++Q_DECLARE_METATYPE(Nepomuk::Annotation*)
++
++AnnotationWidget::AnnotationWidget( QWidget* parent )
++  : QWidget( parent )
++{
++  QVBoxLayout* lay = new QVBoxLayout(this);
++  m_listView = new QListView(this);
++  lay->addWidget(new QLabel(i18n("Suggestions:"), this));
++  lay->addWidget(m_listView);
++
++  m_model = new Nepomuk::ResourceAnnotationModel(m_listView);
++  m_model->setAutoUpdate(false);
++  m_filterModel = new Nepomuk::AnnotationRelevanceFilterModel(m_model);
++  m_filterModel->setSourceModel(m_model);
++  m_filterModel->setSortRole(Nepomuk::AnnotationModel::RelevanceRole);
++  m_filterModel->setDynamicSortFilter(true);
++  m_listView->setModel(m_filterModel);
++
++  connect(m_listView, SIGNAL(activated(QModelIndex)),
++          this, SLOT(slotAnnotationExecuted(QModelIndex)));
++}
++
++
++AnnotationWidget::~AnnotationWidget()
++{
++}
++
++
++void AnnotationWidget::setResource( const Nepomuk::Resource& res, const QString& content )
++{
++  m_model->setResource(res);
++  m_model->setContent(content);
++  m_filterModel->setFilterResource(res);
++  m_model->updateAnnotations();
++}
++
++
++void AnnotationWidget::slotAnnotationExecuted( const QModelIndex& index )
++{
++  Nepomuk::Annotation* anno = index.data( Nepomuk::AnnotationModel::AnnotationRole ).value<Nepomuk::Annotation*>();
++  connect(anno, SIGNAL(finished(Nepomuk::Annotation*)), this, SIGNAL(annotationCreated()));
++  connect(anno, SIGNAL(finished(Nepomuk::Annotation*)), anno, SLOT(deleteLater()));
++  anno->create(m_model->resource());
++}
++
++#include "annotationwidget.moc"
+diff -rupN --exclude=build kdepim-4.3.2/kmail/annotationwidget.h kdepim-4.3.2-mod/kmail/annotationwidget.h
+--- kdepim-4.3.2/kmail/annotationwidget.h	1970-01-01 01:00:00.000000000 +0100
++++ kdepim-4.3.2-mod/kmail/annotationwidget.h	2009-10-27 10:56:50.000000000 +0100
+@@ -0,0 +1,61 @@
++/*
++  This file is part of KMail, the KDE mail client.
++  Copyright (c) 2009 Sebastian Trueg <trueg@kde.org>
++
++  This program is free software; you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation; either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License along
++  with this program; if not, write to the Free Software Foundation, Inc.,
++  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
++*/
++
++#ifndef _KMAIL_ANNOTATION_WIDGET_H_
++#define _KMAIL_ANNOTATION_WIDGET_H_
++
++#include <QtGui/QWidget>
++
++#include <Nepomuk/Resource>
++
++namespace Nepomuk {
++    class ResourceAnnotationModel;
++    class AnnotationRelevanceFilterModel;
++    class Annotation;
++}
++class QListView;
++class QModelIndex;
++
++class AnnotationWidget : public QWidget
++{
++    Q_OBJECT
++
++public:
++    AnnotationWidget( QWidget* parent = 0 );
++    ~AnnotationWidget();
++
++    void setResource( const Nepomuk::Resource& res, const QString& content );
++
++protected:
++  //virtual QSize sizeHint() const { return QSize(200, 300); }
++
++Q_SIGNALS:
++    void newAnnotation( Nepomuk::Annotation* );
++    void annotationCreated();
++
++private Q_SLOTS:
++    void slotAnnotationExecuted( const QModelIndex& );
++
++private:
++    Nepomuk::ResourceAnnotationModel* m_model;
++    Nepomuk::AnnotationRelevanceFilterModel* m_filterModel;
++    QListView* m_listView;
++};
++
++#endif
+diff -rupN --exclude=build kdepim-4.3.2/kmail/kmail_options.h kdepim-4.3.2-mod/kmail/kmail_options.h
+--- kdepim-4.3.2/kmail/kmail_options.h	2008-01-15 02:57:55.000000000 +0100
++++ kdepim-4.3.2-mod/kmail/kmail_options.h	2009-10-23 18:41:09.000000000 +0200
+@@ -22,6 +22,7 @@ static KCmdLineOptions kmail_options ()
+   options.add("check",			ki18n("Only check for new mail"));
+   options.add("composer",		ki18n("Only open composer window"));
+   options.add("view <url>",		ki18n("View the given message file" ));
++  options.add("viewid <msg id>",       ki18n("View the given message corresponding to the kmail id" ));
+   options.add("+[address|URL]",		ki18n("Send message to 'address' resp. "
+                                           "attach the file the 'URL' points "
+                                           "to"));
+diff -rupN --exclude=build kdepim-4.3.2/kmail/kmcommands.cpp kdepim-4.3.2-mod/kmail/kmcommands.cpp
+--- kdepim-4.3.2/kmail/kmcommands.cpp	2009-10-02 10:20:36.000000000 +0200
++++ kdepim-4.3.2-mod/kmail/kmcommands.cpp	2009-10-26 16:27:15.000000000 +0100
+@@ -135,6 +135,9 @@ using namespace KMime;
+ #include <QList>
+ #include <QTextCodec>
+ #include <QProgressBar>
++#include <QDBusInterface>
++
++#include <Nepomuk/Resource>
+ 
+ #include <memory>
+ 
+@@ -244,8 +247,8 @@ void KMCommand::slotStart()
+   if ( mMsgList.size() > 0 )
+     mb = *(mMsgList.begin());
+ 
+-  if ( ( mb ) && ( mMsgList.count() == 1 ) && ( mb->isMessage() ) &&
+-       ( mb->parent() == 0 ) )
++  if ( ( mb ) && ( mMsgList.count() == 1 )
++       && ( mb->isMessage() ) && ( mb->parent() == 0 ) )
+   {
+     // Special case of operating on message that isn't in a folder
+     mRetrievedMsgs.append((KMMessage*)mMsgList.takeFirst());
+@@ -989,6 +992,16 @@ KMOpenMsgCommand::KMOpenMsgCommand( QWid
+   setDeletesItself( true );
+ }
+ 
++KMOpenMsgCommand2::KMOpenMsgCommand2( QWidget *parent, KMMsgBase* message,
++                                    const QString & encoding )
++  : KMCommand( parent, message ),
++    mMsgBase( message ),
++    mEncoding( encoding )
++{
++  Q_ASSERT(message != NULL );
++  setDeletesItself( false );
++}
++
+ KMCommand::Result KMOpenMsgCommand::execute()
+ {
+   if ( mUrl.isEmpty() ) {
+@@ -1009,6 +1022,20 @@ KMCommand::Result KMOpenMsgCommand::exec
+   return OK;
+ }
+ 
++KMCommand::Result KMOpenMsgCommand2::execute()
++{
++    KMReaderMainWin *win = new KMReaderMainWin();
++    KMMessage* msg = new KMMessage (*retrievedMessage() );
++    msg->setReadyToShow( true );
++    Q_ASSERT( msg != NULL );
++    win->showMsg( mEncoding, msg);
++
++    win->show();
++
++    setResult( OK );
++    return OK;
++}
++
+ void KMOpenMsgCommand::slotDataArrived( KIO::Job *, const QByteArray & data )
+ {
+   if ( data.isEmpty() )
+@@ -2087,6 +2114,9 @@ KMCommand::Result KMMoveCommand::execute
+     }
+     bool undo = msg->enableUndo();
+ 
++    // remember nepomuk resource for update later on
++    QUrl oldNepomukUri = msg->nepomukResource().resourceUri();
++
+     if ( msg->transferInProgress() &&
+          srcFolder->folderType() == KMFolderTypeImap )
+     {
+@@ -2122,6 +2152,11 @@ KMCommand::Result KMMoveCommand::execute
+               undoId = kmkernel->undoStack()->newUndoAction( srcFolder, mDestFolder );
+             kmkernel->undoStack()->addMsgToAction( undoId, mb->getMsgSerNum() );
+           }
++
++          // update Nepomuk data (we simply use the service to avoid code duplication)
++          QUrl newNepomukUri = mDestFolder->getMsg( mDestFolder->count() - 1 )->nepomukResource().resourceUri();
++          QDBusInterface("org.kde.nepomuk.services.nepomukfilewatch", "/nepomukfilewatch", "org.kde.nepomuk.FileWatch")
++            .call("moveFileMetadata", QString::fromAscii(oldNepomukUri.toEncoded()), QString::fromAscii(newNepomukUri.toEncoded()));
+         } else if (rc != 0) {
+           // Something  went wrong. Stop processing here, it is likely that the
+           // other moves would fail as well.
+diff -rupN --exclude=build kdepim-4.3.2/kmail/kmcommands.h kdepim-4.3.2-mod/kmail/kmcommands.h
+--- kdepim-4.3.2/kmail/kmcommands.h	2009-10-02 10:20:36.000000000 +0200
++++ kdepim-4.3.2-mod/kmail/kmcommands.h	2009-10-23 18:41:09.000000000 +0200
+@@ -373,6 +373,23 @@ private:
+   const QString mEncoding;
+ };
+ 
++class KMAIL_EXPORT KMOpenMsgCommand2 : public KMCommand
++{
++  Q_OBJECT
++public:
++  explicit KMOpenMsgCommand2( QWidget *parent, KMMsgBase* msgbase,
++                             const QString & encoding = QString() );
++private:
++  virtual KMCommand::Result execute();
++
++ // private slots:
++ //  void slotResult();
++
++ private:
++  KMMsgBase* mMsgBase;
++  const QString mEncoding;
++};
++
+ class KMAIL_EXPORT KMSaveAttachmentsCommand : public KMCommand
+ {
+   Q_OBJECT
+diff -rupN --exclude=build kdepim-4.3.2/kmail/kmkernel.cpp kdepim-4.3.2-mod/kmail/kmkernel.cpp
+--- kdepim-4.3.2/kmail/kmkernel.cpp	2009-10-02 10:20:36.000000000 +0200
++++ kdepim-4.3.2-mod/kmail/kmkernel.cpp	2009-10-23 18:41:09.000000000 +0200
+@@ -2,6 +2,8 @@
+ 
+ #include "kmkernel.h"
+ 
++#include "proxyobject.h"
++
+ #include <config-kmail.h>
+ 
+ #include "globalsettings.h"
+@@ -214,10 +216,12 @@ bool KMKernel::handleCommandLine( bool n
+   QString to, cc, bcc, subj, body;
+   QStringList customHeaders;
+   KUrl messageFile;
++  unsigned long msgSerNum = 0;
+   KUrl::List attachURLs;
+   bool mailto = false;
+   bool checkMail = false;
+   bool viewOnly = false;
++  bool viewOnlyId = false;
+   bool calledWithSession = false; // for ignoring '-session foo'
+ 
+   // process args:
+@@ -301,6 +305,15 @@ bool KMKernel::handleCommandLine( bool n
+     }
+   }
+ 
++  if (args->isSet( "viewid" ) ) {
++    viewOnlyId = true;
++    const QString MsgSerNum = args->getOption( "viewid" );
++    bool conv_ok;
++     msgSerNum = MsgSerNum.toInt(&conv_ok);
++    Q_ASSERT(conv_ok != false);
++    //kDebug() << "MESSAGE SERIAL NUM:" << MsgSerNum;
++  }
++
+   if ( !calledWithSession ) {
+     // only read additional command line arguments if kmail/kontact is
+     // not called with "-session foo"
+@@ -340,7 +353,9 @@ bool KMKernel::handleCommandLine( bool n
+   if ( !noArgsOpensReader && !mailto && !checkMail && !viewOnly )
+     return false;
+ 
+-  if ( viewOnly )
++  if ( viewOnlyId )
++    viewMessage( msgSerNum );
++  else if ( viewOnly )
+     viewMessage( messageFile );
+   else
+     action( mailto, checkMail, to, cc, bcc, subj, body, messageFile,
+@@ -706,6 +721,14 @@ int KMKernel::viewMessage( const KUrl & 
+   return 1;
+ }
+ 
++int KMKernel::viewMessage( unsigned long msgSerNum )
++{
++  proxyObject* prox = new proxyObject(msgSerNum, this);
++  QTimer::singleShot(2000, prox, SLOT( Proxy() ));
++
++  return 1;
++}
++
+ int KMKernel::sendCertificate( const QString& to, const QByteArray& certData )
+ {
+   KMMessage *msg = new KMMessage;
+diff -rupN --exclude=build kdepim-4.3.2/kmail/kmkernel.h kdepim-4.3.2-mod/kmail/kmkernel.h
+--- kdepim-4.3.2/kmail/kmkernel.h	2009-03-10 13:25:20.000000000 +0100
++++ kdepim-4.3.2-mod/kmail/kmkernel.h	2009-10-23 18:41:09.000000000 +0200
+@@ -14,6 +14,7 @@
+ #include <kconfig.h>
+ #include <kurl.h>
+ 
++#include "kmmsgbase.h"
+ #include "kmail_export.h"
+ #include "kmmsgbase.h"
+ #include "kmmessagetag.h"
+@@ -229,6 +230,7 @@ public Q_SLOTS:
+   Q_SCRIPTABLE QString debugSernum( quint32 serialNumber );
+ 
+   Q_SCRIPTABLE int viewMessage( const KUrl & messageFile );
++  Q_SCRIPTABLE int viewMessage( unsigned long msgSerNum );
+ 
+ Q_SIGNALS:
+ 
+diff -rupN --exclude=build kdepim-4.3.2/kmail/kmmessage.cpp kdepim-4.3.2-mod/kmail/kmmessage.cpp
+--- kdepim-4.3.2/kmail/kmmessage.cpp	2009-10-02 10:20:36.000000000 +0200
++++ kdepim-4.3.2-mod/kmail/kmmessage.cpp	2009-10-27 18:52:47.000000000 +0100
+@@ -75,6 +75,21 @@ using namespace KMime::Types;
+ #include "util.h"
+ #endif
+ 
++#include <Nepomuk/Resource>
++#include <Nepomuk/Variant>
++
++Nepomuk::Resource KMMessage::nepomukResource() const
++{
++  // This is an evil hack which should be fixed as soon as we are ported to Akonadi
++  //QString id = "nepomuk:/emails/" + parent()->prettyUrl() + '/' + fileName();
++
++  //This is a less-evil hack
++   QString msgSerNum = QString::number( getMsgSerNum());
++   Nepomuk::Resource mail("XYkmail_msg_" + msgSerNum);//, QUrl( nmoEmail) );
++
++   return mail;
++}
++
+ using namespace KMail;
+ using namespace KMime;
+ 
+diff -rupN --exclude=build kdepim-4.3.2/kmail/kmmessage.h kdepim-4.3.2-mod/kmail/kmmessage.h
+--- kdepim-4.3.2/kmail/kmmessage.h	2009-08-27 10:18:21.000000000 +0200
++++ kdepim-4.3.2-mod/kmail/kmmessage.h	2009-10-23 18:41:09.000000000 +0200
+@@ -53,6 +53,9 @@ namespace KMail {
+   class HeaderStrategy;
+ }
+ 
++namespace Nepomuk {
++  class Resource;
++}
+ 
+ // Real code starts here :)
+ 
+@@ -824,6 +827,11 @@ public:
+ 
+   DwBodyPart* findPart( int index );
+ 
++  /**
++   * Create a Nepomuk resource representing the message.
++   */
++  Nepomuk::Resource nepomukResource() const;
++
+ private:
+ 
+   /** Initialization shared by the ctors. */
+diff -rupN --exclude=build kdepim-4.3.2/kmail/kmreaderwin.cpp kdepim-4.3.2-mod/kmail/kmreaderwin.cpp
+--- kdepim-4.3.2/kmail/kmreaderwin.cpp	2009-10-02 10:20:36.000000000 +0200
++++ kdepim-4.3.2-mod/kmail/kmreaderwin.cpp	2009-10-27 18:51:45.000000000 +0100
+@@ -158,6 +158,12 @@ using KMail::TeeHtmlWriter;
+ #include <QTextDocument>
+ #endif
+ 
++#include "nepomukwidget.h"
++#include "annotationwidget.h"
++#include <nepomuk/resourcemanager.h>
++#include <nepomuk/variant.h>
++#include <QCheckBox>
++
+ // This function returns the complete data that were in this
+ // message parts - *after* all encryption has been removed that
+ // could be removed.
+@@ -425,7 +431,8 @@ void KMReaderWin::objectTreeToDecryptedM
+ 
+ 
+ 
+-
++#include <nepomuk/resourceeditor.h>
++#include <nepomuk/thing.h>
+ 
+ 
+ void KMReaderWin::createWidgets() {
+@@ -442,8 +449,23 @@ void KMReaderWin::createWidgets() {
+   mBox->setFrameStyle( mMimePartTree->frameStyle() );
+   mColorBar = new HtmlStatusBar( mBox );
+   mColorBar->setObjectName( "mColorBar" );
+-  mViewer = new KHTMLPart( mBox );
++  KVBox* viewerBox = new KVBox(mBox);
++  QSplitter* viewerSplitter = new QSplitter(viewerBox);
++  mViewer = new KHTMLPart(viewerSplitter);
+   mViewer->setObjectName( "mViewer" );
++  m_annotationWidget = new AnnotationWidget;
++  viewerSplitter->addWidget(mViewer->widget());
++  viewerSplitter->addWidget(m_annotationWidget);
++  viewerSplitter->setStretchFactor(0, 2);
++
++  connect(m_annotationWidget, SIGNAL(newAnnotation(Nepomuk::Annotation*)), m_annotationWidget, SLOT(show()));
++  //  m_annotationWidget->hide();
++  m_nepomukWidget = new NepomukWidget( viewerBox );
++  m_nepomukWidget->setKMReaderWin( this );
++  viewerBox->setStretchFactor(viewerSplitter, 1);
++  connect(m_nepomukWidget, SIGNAL(changed()), this, SLOT(slotNepomukDataChanged()));
++  connect(m_annotationWidget, SIGNAL(annotationCreated()), this, SLOT(slotNepomukDataChanged()));
++  connect(m_nepomukWidget->hideButton(), SIGNAL( toggled( bool )), m_annotationWidget, SLOT( setHidden( bool ) ) );
+   // Remove the shortcut for the selectAll action from khtml part. It's redefined to
+   // CTRL-SHIFT-A in kmail and clashes with kmails CTRL-A action.
+   KAction *selectAll = qobject_cast<KAction*>(
+@@ -1351,6 +1373,18 @@ void KMReaderWin::setMsg( KMMessage* aMs
+     } else {
+       mUpdateReaderWinTimer.start( 0 );
+     }
++
++    //    m_annotationWidget->hide();
++    if ( !Nepomuk::ResourceManager::instance()->init() && aMsg ) {
++      m_nepomukWidget->setResource( aMsg->nepomukResource().pimoThing() );
++      m_annotationWidget->setResource( aMsg->nepomukResource().pimoThing(), aMsg->bodyToUnicode() );
++      m_nepomukWidget->show();
++      m_annotationWidget->show();
++    }
++    else {
++      m_nepomukWidget->hide();
++      m_annotationWidget->hide();
++    }
+   }
+ 
+   if ( aMsg && (aMsg->status().isUnread() || aMsg->status().isNew())
+@@ -2953,6 +2987,20 @@ QString KMReaderWin::renderAttachments(p
+   return html;
+ }
+ 
++
++void KMReaderWin::slotNepomukDataChanged()
++{
++  Nepomuk::Resource res = message()->nepomukResource();
++  if(res.label().isEmpty()) {
++    res.setLabel(message()->subject());
++    res.setProperty(QUrl::fromEncoded("http://www.semanticdesktop.org/ontologies/2007/01/19/nie#plainTextContent"), message()->bodyToUnicode());
++    res.addType(QUrl::fromEncoded("http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#Email"));
++    res.addProperty(QUrl::fromEncoded("http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#messageId"), QString::number( message()->getMsgSerNum()));
++  }
++  // to update the tags
++  m_nepomukWidget->setResource(res.pimoThing());
++}
++
+ #include "kmreaderwin.moc"
+ 
+ 
+diff -rupN --exclude=build kdepim-4.3.2/kmail/kmreaderwin.h kdepim-4.3.2-mod/kmail/kmreaderwin.h
+--- kdepim-4.3.2/kmail/kmreaderwin.h	2009-08-27 10:18:21.000000000 +0200
++++ kdepim-4.3.2-mod/kmail/kmreaderwin.h	2009-10-23 18:41:09.000000000 +0200
+@@ -35,6 +35,9 @@ using KPIM::MessageStatus;
+ #include "kmmimeparttree.h" // Needed for friend declaration.
+ #include "interfaces/observer.h"
+ 
++class NepomukWidget;
++class AnnotationWidget;
++
+ class QSplitter;
+ class KHBox;
+ class QTreeWidgetItem;
+@@ -90,6 +93,7 @@ class KMReaderWin: public QWidget, publi
+ 
+   friend class KMail::ObjectTreeParser;
+   friend class KMail::KHtmlPartHtmlWriter;
++  //friend class NepomukWidget; //MINE
+ 
+ public:
+   KMReaderWin( QWidget *parent, QWidget *mainWindow,
+@@ -509,6 +513,7 @@ protected:
+ private slots:
+   void slotSetEncoding();
+   void injectAttachments();
++  void slotNepomukDataChanged();
+ 
+ private:
+   void adjustLayout();
+@@ -594,6 +599,9 @@ private:
+   bool mShowSignatureDetails;
+   bool mShowAttachmentQuicklist;
+   bool mExternalWindow;
++
++  NepomukWidget* m_nepomukWidget;
++  AnnotationWidget* m_annotationWidget;
+ };
+ 
+ 
+diff -rupN --exclude=build kdepim-4.3.2/kmail/nepomukwidget.cpp kdepim-4.3.2-mod/kmail/nepomukwidget.cpp
+--- kdepim-4.3.2/kmail/nepomukwidget.cpp	1970-01-01 01:00:00.000000000 +0100
++++ kdepim-4.3.2-mod/kmail/nepomukwidget.cpp	2009-10-27 18:51:40.000000000 +0100
+@@ -0,0 +1,142 @@
++/*
++  This file is part of KMail, the KDE mail client.
++  Copyright (c) 2009 Sebastian Trueg <trueg@kde.org>
++
++  This program is free software; you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation; either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License along
++  with this program; if not, write to the Free Software Foundation, Inc.,
++  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
++*/
++
++#include "nepomukwidget.h"
++
++#include "kmreaderwin.h"
++#include "kmmessage.h"
++
++#include <nepomuk/annotationwidget.h>
++#include <nepomuk/kmetadatatagwidget.h>
++#include <nepomuk/kratingwidget.h>
++
++#include <QHBoxLayout>
++#include <QLabel>
++#include <KIcon>
++#include <KMessageBox>
++#include <QPushButton>
++#include <KLocale>
++
++#include <Nepomuk/Resource>
++#include <Nepomuk/Variant>
++#include <Nepomuk/Thing>
++
++#include <tasktreedialog.h>
++#include <KDebug>
++
++static const char* pimoIsRelated = "http://www.semanticdesktop.org/ontologies/2007/11/01/pimo#isRelated";
++
++NepomukWidget::NepomukWidget( QWidget* parent )
++  : QWidget( parent )
++{
++  QHBoxLayout* lay = new QHBoxLayout(this);
++  m_tagWidget = new Nepomuk::TagWidget(this);
++  m_ratingWidget = new KRatingWidget(this);
++  m_annotationWidget = new Nepomuk::AnnotationWidget(this);
++  m_tasksButton = new QPushButton( KIcon("task-new"), i18n("Associate to..."), this );
++  m_hideButton = new QPushButton( KIcon("arrow-right-double"), "", this);
++  m_hideButton->setToolTip( i18n("Hide/show the annotation suggestions") );
++  m_hideButton->setCheckable( true );
++
++  lay->addWidget(new QLabel(i18n("Tags:"), this));
++  lay->addWidget(m_tagWidget);
++  lay->addWidget(m_ratingWidget);
++  lay->addWidget(m_tasksButton);
++  lay->addWidget(m_annotationWidget);
++  lay->addWidget(m_hideButton);
++
++  connect( m_ratingWidget, SIGNAL( ratingChanged( int ) ),
++           this, SLOT( slotRatingChanged( int ) ) );
++  connect( m_annotationWidget, SIGNAL(annotationAdded(Nepomuk::Resource)),
++           this, SIGNAL(changed()));
++
++  connect( m_tasksButton, SIGNAL( clicked( bool )),
++           this, SLOT( associateToATask() ));
++			   
++  connect( m_hideButton, SIGNAL( toggled( bool )),
++	   this, SLOT( hideAnnotationPanel( bool )) );
++}
++
++NepomukWidget::~NepomukWidget()
++{
++}
++
++void NepomukWidget::hideAnnotationPanel( bool toggled )
++{
++  m_hideButton->setIcon( KIcon( toggled ? "arrow-left-double" : "arrow-right-double") );
++}
++
++void NepomukWidget::setKMReaderWin( KMReaderWin* kmreaderwin)
++{
++  m_kmreaderwin = kmreaderwin;
++}
++
++void NepomukWidget::associateToATask()
++{
++  Nepomuk::Resource task( TaskTreeDialog::selectOneTask(NULL) );
++  if ( task.isValid() ) {
++    Nepomuk::Resource mail = m_kmreaderwin->message()->nepomukResource();
++    
++    mail.addProperty( QUrl::fromEncoded( pimoIsRelated ), task );
++    mail.pimoThing().addProperty( QUrl::fromEncoded( pimoIsRelated ), task ); //evil hack for trug pimo:thing
++
++    m_tasksButton->setText( task.genericLabel() );
++    emit changed();
++
++    Nepomuk::Resource toto("TOTOTATATITI", QUrl::fromEncoded("http://www.semanticdesktop.org/ontologies/2007/11/01/pimo#person"));
++    toto.setLabel("toto");
++    toto.pimoThing().setLabel("toto thing");
++
++  }
++}
++
++void NepomukWidget::setResource( const Nepomuk::Resource& res )
++{
++  m_resource = res;
++  m_tagWidget->setTaggedResource( res );
++  m_annotationWidget->setResource( res );
++  m_ratingWidget->setRating( res.rating() );
++
++  Nepomuk::Variant tasks = res.property( QUrl::fromEncoded(pimoIsRelated) );
++  // QHash<QUrl, Nepomuk::Variant> p = res.properties();
++  // QHashIterator<QUrl, Nepomuk::Variant>  it(p);
++  // QString txt;
++  // while ( it.hasNext() ) {
++  //   it.next();
++  //   txt += it.key().toString() + " " + it.value().toString() + "\n";
++  // }
++  //KMessageBox::information(this, txt);
++  // kDebug() << txt;
++
++  if ( !tasks.toResourceList().isEmpty() ) {
++    m_tasksButton->setText( tasks.toResourceList().front().label() );
++  }
++  else {
++    m_tasksButton->setText( i18n("Associate to...") );
++  }
++
++}
++
++void NepomukWidget::slotRatingChanged(int rating)
++{
++  m_resource.setRating(rating);
++  emit changed();
++}
++
++#include "nepomukwidget.moc"
+diff -rupN --exclude=build kdepim-4.3.2/kmail/nepomukwidget.h kdepim-4.3.2-mod/kmail/nepomukwidget.h
+--- kdepim-4.3.2/kmail/nepomukwidget.h	1970-01-01 01:00:00.000000000 +0100
++++ kdepim-4.3.2-mod/kmail/nepomukwidget.h	2009-10-27 16:39:51.000000000 +0100
+@@ -0,0 +1,69 @@
++/*
++  This file is part of KMail, the KDE mail client.
++  Copyright (c) 2009 Sebastian Trueg <trueg@kde.org>
++
++  This program is free software; you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation; either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License along
++  with this program; if not, write to the Free Software Foundation, Inc.,
++  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
++*/
++
++#ifndef _KMAIL_NEPOMUK_WIDGET_H_
++#define _KMAIL_NEPOMUK_WIDGET_H_
++
++#include <QtGui/QWidget>
++
++#include <Nepomuk/Resource>
++
++namespace Nepomuk {
++    class AnnotationWidget;
++    class TagWidget;
++}
++class KRatingWidget;
++class KMReaderWin;
++class QPushButton;
++
++class NepomukWidget : public QWidget
++{
++    Q_OBJECT
++
++public:
++    NepomukWidget( QWidget* parent = 0 );
++    ~NepomukWidget();
++
++    void setResource( const Nepomuk::Resource& res );
++    void setKMReaderWin( KMReaderWin* );
++    QPushButton* hideButton() { return m_hideButton; }
++
++Q_SIGNALS:
++    /**
++     * Emitted if an annotation has been added or a rating changed
++     * or whateever.
++     */
++    void changed();
++
++private Q_SLOTS:
++    void slotRatingChanged(int);
++    void associateToATask();
++    void hideAnnotationPanel( bool );
++
++private:
++    Nepomuk::AnnotationWidget* m_annotationWidget;
++    Nepomuk::TagWidget* m_tagWidget;
++    KRatingWidget* m_ratingWidget;
++    Nepomuk::Resource m_resource;
++    KMReaderWin* m_kmreaderwin;
++    QPushButton* m_tasksButton;
++    QPushButton* m_hideButton;
++};
++
++#endif
+diff -rupN --exclude=build kdepim-4.3.2/kmail/proxyobject.cpp kdepim-4.3.2-mod/kmail/proxyobject.cpp
+--- kdepim-4.3.2/kmail/proxyobject.cpp	1970-01-01 01:00:00.000000000 +0100
++++ kdepim-4.3.2-mod/kmail/proxyobject.cpp	2009-10-27 10:56:50.000000000 +0100
+@@ -0,0 +1,25 @@
++#include "proxyobject.h"
++#include "kmmsgbase.h"
++#include "kmmsgdict.h"
++#include "kmcommands.h"
++#include "kmfolder.h"
++
++void    proxyObject::Proxy()
++{
++    KMFolder* folder;
++    KMMsgBase* msgbase;
++    int index;
++
++    KMMsgDict::instance()->getLocation( msgSerNum, &folder, &index );
++    if ( folder != NULL && index != -1 ) {
++      kFatal("msg serial number not found ; the serial number provided may incorrect");
++    }
++    folder->open("viewid");
++    msgbase = folder->getMsgBase( index );
++    Q_ASSERT( msgbase != NULL );
++
++    KMOpenMsgCommand2 *openCommand = new KMOpenMsgCommand2( 0, msgbase );
++    openCommand->start();
++}
++
++#include "proxyobject.moc"
+diff -rupN --exclude=build kdepim-4.3.2/kmail/proxyobject.h kdepim-4.3.2-mod/kmail/proxyobject.h
+--- kdepim-4.3.2/kmail/proxyobject.h	1970-01-01 01:00:00.000000000 +0100
++++ kdepim-4.3.2-mod/kmail/proxyobject.h	2009-10-27 10:56:50.000000000 +0100
+@@ -0,0 +1,21 @@
++#ifndef _PROXYOBJECT_H_
++#define _PROXYOBJECT_H_
++
++#include <QObject>
++
++class   proxyObject : public QObject
++{
++  Q_OBJECT
++  unsigned long msgSerNum;
++
++public:
++  proxyObject( unsigned long serNum, QObject* parent = 0 ) :
++    QObject( parent ), msgSerNum( serNum)
++  {
++  }
++
++public slots:
++  void  Proxy();
++};
++
++#endif
+diff -rupN --exclude=build kdepim-4.3.2/kmail/tasktreedialog.h kdepim-4.3.2-mod/kmail/tasktreedialog.h
+--- kdepim-4.3.2/kmail/tasktreedialog.h	1970-01-01 01:00:00.000000000 +0100
++++ kdepim-4.3.2-mod/kmail/tasktreedialog.h	2009-10-27 10:56:50.000000000 +0100
+@@ -0,0 +1,57 @@
++/*
++   Copyright (C) 2009 by Charles Wautier <charles.wautier@gmail.com>
++
++   This program is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 2, or (at your option)
++   any later version.
++
++   This program is distributed in the hope that it will be useful,
++   but WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++   GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with this program; if not, write to the Free Software
++   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
++*/
++
++#ifndef _TASK_TREE_DIALOG_H_
++#define _TASK_TREE_DIALOG_H_
++
++#include <KDialog>
++#include <QWidget>
++#include <nepomuk/nepomuk_export.h>
++
++namespace Nepomuk {
++    class Resource;
++}
++
++class NEPOMUK_EXPORT TaskTreeDialog : public KDialog
++{
++
++public :
++
++    TaskTreeDialog( QWidget* parent = 0 );
++    ~TaskTreeDialog();
++
++    /**
++     * REQUIRE :
++     * nepomukserver running
++     *
++     * GARANTEE :
++     * Present the list of the Nepomuk::TMO::Task of the DB
++     * which has no parent tasks in a tree view.
++     *
++     * RETURN :
++     * The selected task if there is one and the dialog is Accepted
++     * An empty Nepomuk::Resource otherwise.
++     */
++    static Nepomuk::Resource selectOneTask( QWidget* parent = 0 );
++
++    class Private;
++    Private* d;
++
++};
++
++#endif
+diff -rupN --exclude=.svn --exclude=TAGS kdepim-4.3.2-ori/kmail/CMakeLists.txt kdepim-4.3.2/kmail/CMakeLists.txt
+--- kdepim-4.3.2-ori/kmail/CMakeLists.txt   2009-10-26 15:32:40.000000000 +0100
++++ kdepim-4.3.2/kmail/CMakeLists.txt   2009-10-23 18:41:09.000000000 +0200
+@@ -65,9 +65,9 @@ endif(Nepomuk_FOUND)
+ 
+ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${KDE4_ENABLE_EXCEPTIONS}")
+ 
+-########### kmailprivate ###############
++########### kmailnepomukprivate ###############
+ 
+-set(kmailprivate_LIB_SRCS
++set(kmailnepomukprivate_LIB_SRCS
+    kmmessage.cpp
+    kmmainwin.cpp
+    configuredialog.cpp
+@@ -243,6 +243,9 @@ set(kmailprivate_LIB_SRCS
+    procmailparser.cpp
+    stringutil.cpp
+    iconnamecache.cpp
++   nepomukwidget.cpp
++   proxyobject.cpp
++   annotationwidget.cpp
+    messagelistview/messageset.cpp
+    messagelistview/pane.cpp
+    messagelistview/storagemodel.cpp
+@@ -273,31 +276,31 @@ set(kmailprivate_LIB_SRCS
+    messagelistview/core/widgetbase.cpp
+ )
+ 
+-qt4_add_dbus_adaptor(kmailprivate_LIB_SRCS
++qt4_add_dbus_adaptor(kmailnepomukprivate_LIB_SRCS
+   ${CMAKE_BINARY_DIR}/kmail/org.kde.kmail.kmail.xml kmkernel.h KMKernel
+ )
+-qt4_add_dbus_adaptor(kmailprivate_LIB_SRCS
++qt4_add_dbus_adaptor(kmailnepomukprivate_LIB_SRCS
+   ${CMAKE_BINARY_DIR}/kmail/org.kde.kmail.mailcomposer.xml kmcomposewin.h KMComposeWin
+ )
+-qt4_add_dbus_adaptor(kmailprivate_LIB_SRCS
++qt4_add_dbus_adaptor(kmailnepomukprivate_LIB_SRCS
+   ${CMAKE_CURRENT_SOURCE_DIR}/org.kde.kmail.groupware.xml kmailicalifaceimpl.h KMailICalIfaceImpl
+ )
+-qt4_add_dbus_adaptor(kmailprivate_LIB_SRCS
++qt4_add_dbus_adaptor(kmailnepomukprivate_LIB_SRCS
+   ${CMAKE_SOURCE_DIR}/libkdepim/interfaces/org.kde.mailtransport.service.xml mailserviceimpl.h
+   KMail::MailServiceImpl
+ )
+-qt4_add_dbus_adaptor(kmailprivate_LIB_SRCS
++qt4_add_dbus_adaptor(kmailnepomukprivate_LIB_SRCS
+   ${CMAKE_SOURCE_DIR}/libkdepim/interfaces/org.freedesktop.email.metadata.Manager.xml mailmanagerimpl.h
+   KMail::MailManagerImpl
+ )
+ 
+-qt4_add_dbus_interfaces(kmailprivate_LIB_SRCS
++qt4_add_dbus_interfaces(kmailnepomukprivate_LIB_SRCS
+   ${CMAKE_BINARY_DIR}/kmail/org.kde.kmail.kmail.xml
+   ${CMAKE_BINARY_DIR}/kmail/org.kde.kmail.mailcomposer.xml
+   ${CMAKE_SOURCE_DIR}/korganizer/org.kde.Korganizer.Calendar.xml
+ )
+ 
+-kde4_add_ui_files(kmailprivate_LIB_SRCS
++kde4_add_ui_files(kmailnepomukprivate_LIB_SRCS
+   ui/composercryptoconfiguration.ui
+   ui/warningconfiguration.ui
+   ui/smimeconfiguration.ui
+@@ -326,7 +329,7 @@ else(KDEPIM_ENTERPRISE_BUILD)
+ endif(KDEPIM_ENTERPRISE_BUILD)
+ configure_file(kmail.kcfg.cmake ${CMAKE_CURRENT_BINARY_DIR}/kmail.kcfg)
+ 
+-kde4_add_kcfg_files(kmailprivate_LIB_SRCS
++kde4_add_kcfg_files(kmailnepomukprivate_LIB_SRCS
+   globalsettings_base.kcfgc
+   replyphrases.kcfgc
+   custommimeheader.kcfgc
+@@ -350,8 +353,8 @@ if(KMAIL_SQLITE_INDEX)
+   include_directories(${SQLITE_INCLUDE_DIR})
+ endif(KMAIL_SQLITE_INDEX)
+ 
+-kde4_add_library(kmailprivate SHARED ${kmailprivate_LIB_SRCS})
+-target_link_libraries(kmailprivate
++kde4_add_library(kmailnepomukprivate SHARED ${kmailnepomukprivate_LIB_SRCS})
++target_link_libraries(kmailnepomukprivate
+   ${KDE4_KHTML_LIBRARY}
+   ${KDE4_THREADWEAVER_LIBRARY}
+   ${KDE4_KMIME_LIBRARY}
+@@ -364,6 +367,7 @@ target_link_libraries(kmailprivate
+   ${KDE4_KIMAP_LIBRARY}
+   ${KDE4_KPARTS_LIBRARY}
+   ${KDE4_KRESOURCES_LIBRARY}
++  ${KDE4_KFILE_LIBS}
+   kleo
+   ${QGPGME_LIBRARIES}
+   mimelib
+@@ -375,17 +379,22 @@ target_link_libraries(kmailprivate
+   ${KDEPIMLIBS_KPIMUTILS_LIBS}
+   ${KDEPIMLIBS_KPIMTEXTEDIT_LIBS}
+   ${QT_QT3SUPPORT_LIBRARY}
++  ${NEPOMUK_LIBRARIES}
++  nepomukannotation
++  nepomuk
++  nepomukutils
++  nepomuktasks
+ )
+ 
+ if(KMAIL_SQLITE_INDEX)
+-  target_link_libraries(kmailprivate ${SQLITE_LIBRARIES})
++  target_link_libraries(kmailnepomukprivate ${SQLITE_LIBRARIES})
+ endif(KMAIL_SQLITE_INDEX)
+ 
+ if(Nepomuk_FOUND)
+-  target_link_libraries(kmailprivate LINK_INTERFACE_LIBRARIES ${KDE4_NEPOMUK_LIBS})
++  target_link_libraries(kmailnepomukprivate LINK_INTERFACE_LIBRARIES ${KDE4_NEPOMUK_LIBS})
+ endif(Nepomuk_FOUND)
+ 
+-set_target_properties(kmailprivate
++set_target_properties(kmailnepomukprivate
+   PROPERTIES VERSION ${GENERIC_LIB_VERSION} SOVERSION ${GENERIC_LIB_SOVERSION}
+ )
+ 
+@@ -393,7 +402,7 @@ set_target_properties(kmailprivate
+ 
+ set(kcm_kmail_PART_SRCS kcm_kmail.cpp )
+ kde4_add_plugin(kcm_kmail ${kcm_kmail_PART_SRCS})
+-target_link_libraries(kcm_kmail  ${KDE4_KDEUI_LIBS} kmailprivate )
++target_link_libraries(kcm_kmail  ${KDE4_KDEUI_LIBS} kmailnepomukprivate )
+ 
+ ########### kmailpart ###############
+ 
+@@ -406,7 +415,7 @@ qt4_add_dbus_interfaces(kmailpart_PART_S
+ kde4_add_plugin(kmailpart ${kmailpart_PART_SRCS})
+ target_link_libraries(kmailpart
+   ${KDE4_KDECORE_LIBS}
+-  kmailprivate
++  kmailnepomukprivate
+   ${KDE4_KPARTS_LIBS}
+   ${KDE4_KUTILS_LIBS}
+ )
+@@ -429,13 +438,13 @@ kde4_add_executable(kmail ${kmail_SRCS})
+ target_link_libraries(kmail
+   ${KDE4_KDEUI_LIBS}
+   ${KDE4_KDECORE_LIBS}
+-  kmailprivate
++  kmailnepomukprivate
+   kdepim
+ )
+ 
+ ########### install files ###############
+ 
+-install(TARGETS kmailprivate ${INSTALL_TARGETS_DEFAULT_ARGS} LIBRARY NAMELINK_SKIP)
++install(TARGETS kmailnepomukprivate ${INSTALL_TARGETS_DEFAULT_ARGS} LIBRARY NAMELINK_SKIP)
+ install(TARGETS kmail ${INSTALL_TARGETS_DEFAULT_ARGS})
+ install(FILES KMail.desktop kmail_view.desktop DESTINATION ${XDG_APPS_INSTALL_DIR})
+ install(FILES
+diff -rupN --exclude=.svn --exclude=TAGS kdepim-4.3.2-ori/kmail/tests/CMakeLists.txt kdepim-4.3.2/kmail/tests/CMakeLists.txt
+--- kdepim-4.3.2-ori/kmail/tests/CMakeLists.txt 2009-10-26 15:32:31.000000000 +0100
++++ kdepim-4.3.2/kmail/tests/CMakeLists.txt 2009-10-23 18:41:09.000000000 +0200
+@@ -59,7 +59,7 @@ set(recipienteditortest_SRCS recipientse
+ 
+ kde4_add_executable(recipienteditortest TEST ${recipienteditortest_SRCS})
+ 
+-target_link_libraries(recipienteditortest  ${KDE4_KIO_LIBS} kmailprivate kdepim )
++target_link_libraries(recipienteditortest  ${KDE4_KIO_LIBS} kmailnepomukprivate kdepim )
+ 
+ 
+ ###### TODO port storagelayer tests to QTestLib
+--- kdepim-4.3.2/plugins/kmail/bodypartformatter/CMakeLists.txt 2009-05-14 19:27:08.000000000 +0200
++++ kdepim-4.3.2-nepomuk/plugins/kmail/bodypartformatter/CMakeLists.txt 2009-10-23 16:34:25.000000000 +0200
+@@ -31,7 +31,7 @@ kde4_add_plugin(kmail_bodypartformatter_
+ 
+ 
+ 
+-target_link_libraries(kmail_bodypartformatter_text_calendar  ${KDEPIMLIBS_KPIMUTILS_LIBS} ${KDE4_KDECORE_LIBS} ${KDEPIMLIBS_KCAL_LIBS} kmailprivate  kdepim ${KDE4_KDE3SUPPORT_LIBS} ${QT_QT3SUPPORT_LIBRARY})
++target_link_libraries(kmail_bodypartformatter_text_calendar  ${KDEPIMLIBS_KPIMUTILS_LIBS} ${KDE4_KDECORE_LIBS} ${KDEPIMLIBS_KCAL_LIBS} kmailnepomukprivate  kdepim ${KDE4_KDE3SUPPORT_LIBS} ${QT_QT3SUPPORT_LIBRARY})
+ 
+ install(TARGETS kmail_bodypartformatter_text_calendar  DESTINATION ${PLUGIN_INSTALL_DIR})

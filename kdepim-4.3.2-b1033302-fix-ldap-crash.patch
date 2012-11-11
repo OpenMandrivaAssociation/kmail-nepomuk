@@ -1,0 +1,48 @@
+
+# SVN commit 1033302 by tmcguire:
+# 
+# Backport r1033249 by tmcguire from trunk to the 4.3 branch:
+# 
+# SVN_MERGE
+# Merged revisions 1029699 via svnmerge from
+# svn+ssh://tmcguire@svn.kde.org/home/kde/branches/kdepim/enterprise4/kdepim
+# 
+# ........
+#  r1029699 | tmcguire | 2009-09-30 17:08:52 +0200 (Wed, 30 Sep 2009) | 3 lines
+# 
+#  Don't crash when an LDAP entry has no mail address.
+#  Part of kolab/issue1499
+# ........
+# 
+
+Index: libkdepim/ldapsearchdialog.cpp
+===================================================================
+--- libkdepim/ldapsearchdialog.cpp	(révision 1033301)
++++ libkdepim/ldapsearchdialog.cpp	(révision 1033302)
+@@ -462,13 +462,19 @@
+   for ( int i = 0; i < mResultListView->topLevelItemCount(); i++ ) {
+     ContactListItem *cli = static_cast<ContactListItem *>( mResultListView->topLevelItem( i ) );
+     if ( cli->isSelected() ) {
+-      QString email = asUtf8( cli->mAttrs[ "mail" ].first() ).trimmed();
+-      if ( !email.isEmpty() ) {
+-        QString name = asUtf8( cli->mAttrs[ "cn" ].first() ).trimmed();
+-        if ( name.isEmpty() ) {
+-          result << email;
+-        } else {
+-          result << name + " <" + email + '>';
++      const KLDAP::LdapAttrValue &mailAttrs = cli->mAttrs[ "mail" ];
++      if ( mailAttrs.size() >= 1 ) {
++        QString email = asUtf8( mailAttrs.first() ).trimmed();
++        if ( !email.isEmpty() ) {
++          const KLDAP::LdapAttrValue &nameAttrs = cli->mAttrs[ "cn" ];
++          if ( nameAttrs.size() > 1 ) {
++            QString name = asUtf8( nameAttrs.first() ).trimmed();
++            if ( name.isEmpty() ) {
++              result << email;
++            } else {
++              result << name + " <" + email + '>';
++            }
++          }
+         }
+       }
+     }

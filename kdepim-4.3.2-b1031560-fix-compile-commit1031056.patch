@@ -1,0 +1,81 @@
+#
+# SVN commit 1031560 by winterz:
+# 
+# backport parts of r1022930 so that compiling the dataloss fix works.
+#
+ 
+Index: kontact/plugins/korganizer/summaryeventinfo.cpp
+===================================================================
+--- kontact/plugins/korganizer/summaryeventinfo.cpp	(révision 1031559)
++++ kontact/plugins/korganizer/summaryeventinfo.cpp	(révision 1031560)
+@@ -29,7 +29,10 @@
+ #include <libkdepim/kpimprefs.h>
+ #include <korganizer/stdcalendar.h>
+ #include <kcal/incidenceformatter.h>
++using namespace KCal;
+ 
++#include <KSystemTimeZones>
++
+ #include <QDate>
+ #include <QStringList>
+ 
+@@ -103,11 +106,8 @@
+   KCal::Event::List events = calendar->events( date, calendar->timeSpec() );
+   KCal::Event::List::ConstIterator it = events.constBegin();
+ 
+-  KCal::Event::List events;
+-  events.setAutoDelete( true );
+-
+   KDateTime qdt;
+-  KDateTime::Spec spec = KPIM::KPimPrefs::timeSpec();
++  KDateTime::Spec spec = KSystemTimeZones::local();
+   KDateTime currentDateTime = KDateTime::currentDateTime( spec );
+   QDate currentDate = currentDateTime.date();
+ 
+@@ -175,6 +175,9 @@
+     SummaryEventInfo *summaryEvent = new SummaryEventInfo();
+     eventInfoList.append( summaryEvent );
+ 
++    // Event
++    summaryEvent->ev = ev;
++
+     // Start date label
+     QString str = "";
+     QDate sD = QDate( date.year(), date.month(), date.day() );
+@@ -193,9 +196,9 @@
+     // Print the date span for multiday, floating events, for the
+     // first day of the event only.
+     if ( ev->isMultiDay() && ev->allDay() && firstDayOfMultiday && span > 1 ) {
+-      str = ev->dtStartDateStr( false, spec ) +
++      str = IncidenceFormatter::dateToString( ev->dtStart(), false, spec ) +
+             " -\n " +
+-            ev->dtEndDateStr( false, spec );
++            IncidenceFormatter::dateToString( ev->dtEnd(), false, spec );
+     }
+     summaryEvent->dateSpan = str;
+ 
+Index: kontact/plugins/korganizer/summaryeventinfo.h
+===================================================================
+--- kontact/plugins/korganizer/summaryeventinfo.h	(révision 1031559)
++++ kontact/plugins/korganizer/summaryeventinfo.h	(révision 1031560)
+@@ -48,6 +48,7 @@
+                                KCal::Calendar *calendar );
+     static void setShowSpecialEvents( bool skipBirthdays, bool skipAnniversaries );
+ 
++    KCal::Event *ev;
+     QString startDate;
+     QString dateSpan;
+     QString daysToGo;
+Index: kontact/plugins/korganizer/apptsummarywidget.cpp
+===================================================================
+--- kontact/plugins/korganizer/apptsummarywidget.cpp	(révision 1031559)
++++ kontact/plugins/korganizer/apptsummarywidget.cpp	(révision 1031560)
+@@ -122,7 +122,7 @@
+ 
+     foreach ( SummaryEventInfo *event, events ) {
+ 
+-      Event *ev = event->ev;
++      KCal::Event *ev = event->ev;
+       // print the first of the recurring event series only
+       if ( ev->recurs() ) {
+         if ( uidList.contains( ev->uid() ) ) {

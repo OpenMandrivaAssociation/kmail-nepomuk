@@ -1,0 +1,149 @@
+# 
+# SVN commit 1032418 by djarvie:
+# 
+# Fix recurring date-only alarm triggering repeatedly and eating up CPU, when the
+# start of day time is after midnight and the alarm is due, but the current time of
+# day in UTC is earlier than the start-of-day time of day in the alarm's time zone.
+# 
+
+Index: kalarm/kalarm.h
+===================================================================
+--- kalarm/kalarm.h	(révision 1032417)
++++ kalarm/kalarm.h	(révision 1032418)
+@@ -23,7 +23,7 @@
+ 
+ #undef QT3_SUPPORT
+ 
+-#define KALARM_VERSION "2.2.8"
++#define KALARM_VERSION "2.2.9"
+ #define KALARM_NAME "KAlarm"
+ #define KALARM_DBUS_SERVICE  "org.kde.kalarm"  // D-Bus service name of KAlarm application
+ 
+Index: kalarm/Changelog
+===================================================================
+--- kalarm/Changelog	(révision 1032417)
++++ kalarm/Changelog	(révision 1032418)
+@@ -1,6 +1,11 @@
+ KAlarm Change Log
+ 
+-=== Version 2.2.8 --- 28 September 2009 ===
++=== Version 2.2.9 --- 7 October 2009 ===
++- Fix recurring date-only alarm triggering repeatedly and eating up CPU, if the
++  start-of-day time is after midnight and the alarm is due, but current UTC time
++  of day is earlier than the start-of-day time of day in the alarm's time zone.
++
++=== Version 2.2.8 (KDE 4.3.2) --- 28 September 2009 ===
+ - Use KDE system settings to determine default working days in the week.
+ - Provide 'any time' option in Defer Alarm dialogue, for date-only alarms.
+ 
+Index: kalarm/kalarmapp.cpp
+===================================================================
+--- kalarm/kalarmapp.cpp	(révision 1032417)
++++ kalarm/kalarmapp.cpp	(révision 1032418)
+@@ -837,6 +837,7 @@
+ 	AlarmCalendar* cal = AlarmCalendar::resources();
+ 	if (KAEvent::adjustStartOfDay(cal->kcalEvents(KCalEvent::ACTIVE)))
+ 		cal->save();
++	AlarmCalendar::resources()->adjustStartOfDay();
+ 	Preferences::updateStartOfDayCheck(sod);  // now that calendar is updated, set OK flag in config file
+ 	mStartOfDay = sod;
+ }
+Index: kalarm/alarmcalendar.cpp
+===================================================================
+--- kalarm/alarmcalendar.cpp	(révision 1032417)
++++ kalarm/alarmcalendar.cpp	(révision 1032418)
+@@ -1476,3 +1476,22 @@
+ 	// Now update the earliest alarm to trigger for its resource
+ 	findEarliestAlarm(AlarmResources::instance()->resourceForIncidence(id));
+ }
++
++/******************************************************************************
++* Called when the user changes the start-of-day time.
++* Adjust the start times of all date-only alarms' recurrences.
++*/
++void AlarmCalendar::adjustStartOfDay()
++{
++	if (!mCalendar)
++		return;
++	for (ResourceMap::ConstIterator rit = mResourceMap.constBegin();  rit != mResourceMap.constEnd();  ++rit)
++	{
++		const KAEvent::List events = rit.value();
++		for (int i = 0, end = events.count();  i < end;  ++i)
++		{
++			if (events[i]->startDateTime().isDateOnly()  &&  events[i]->recurs())
++				events[i]->adjustRecurrenceStartOfDay();
++		}
++	}
++}
+Index: kalarm/alarmevent.cpp
+===================================================================
+--- kalarm/alarmevent.cpp	(révision 1032417)
++++ kalarm/alarmevent.cpp	(révision 1032418)
+@@ -2669,7 +2669,7 @@
+ 	if (mStartDateTime.isDateOnly())
+ 	{
+ 		QDate pre = preDateTime.date();
+-		if (preDateTime.time() < Preferences::startOfDay())
++		if (preDateTime.toTimeSpec(mStartDateTime.timeSpec()).time() < Preferences::startOfDay())
+ 			pre = pre.addDays(-1);    // today's recurrence (if today recurs) is still to come
+ 		if (pre < dt.date())
+ 			return true;
+@@ -2784,7 +2784,7 @@
+ 	else
+ 	{
+ 		KDateTime recurStart = mRecurrence->startDateTime();
+-		KDateTime after = afterDateTime;
++		KDateTime after = afterDateTime.toTimeSpec(mStartDateTime.timeSpec());
+ 		if (mStartDateTime.isDateOnly()  &&  afterDateTime.time() > Preferences::startOfDay())
+ 			after = after.addDays(1);    // today's recurrence (if today recurs) has passed
+ 		KDateTime dt = mRecurrence->getPreviousDateTime(after);
+@@ -2909,7 +2909,7 @@
+ KAEvent::OccurType KAEvent::nextRecurrence(const KDateTime& preDateTime, DateTime& result) const
+ {
+ 	KDateTime recurStart = mRecurrence->startDateTime();
+-	KDateTime pre = preDateTime;
++	KDateTime pre = preDateTime.toTimeSpec(mStartDateTime.timeSpec());
+ 	if (mStartDateTime.isDateOnly()  &&  !pre.isDateOnly()  &&  pre.time() < Preferences::startOfDay())
+ 	{
+ 		pre = pre.addDays(-1);    // today's recurrence (if today recurs) is still to come
+@@ -3072,6 +3072,16 @@
+ }
+ 
+ /******************************************************************************
++* Called when the user changes the start-of-day time.
++* Adjust the start time of a date-only alarm's recurrence.
++*/
++void KAEvent::adjustRecurrenceStartOfDay()
++{
++	if (mRecurrence)
++		mRecurrence->setStartDateTime(mStartDateTime.effectiveKDateTime());
++}
++
++/******************************************************************************
+ *  Initialise the event's sub-repetition.
+ *  The repetition length is adjusted if necessary to fit the recurrence interval.
+ *  Reply = false if a non-daily interval was specified for a date-only recurrence.
+Index: kalarm/alarmcalendar.h
+===================================================================
+--- kalarm/alarmcalendar.h	(révision 1032417)
++++ kalarm/alarmcalendar.h	(révision 1032418)
+@@ -81,6 +81,7 @@
+ 		bool                  isEmpty() const;
+ 		QString               path() const           { return (mCalType == RESOURCES) ? QString() : mUrl.prettyUrl(); }
+ 		QString               urlString() const      { return (mCalType == RESOURCES) ? QString() : mUrl.url(); }
++		void                  adjustStartOfDay();
+ 
+ 		static QString        icalProductId();
+ 		static bool           initialiseCalendars();
+Index: kalarm/alarmevent.h
+===================================================================
+--- kalarm/alarmevent.h	(révision 1032417)
++++ kalarm/alarmevent.h	(révision 1032418)
+@@ -457,6 +457,7 @@
+ 		bool               setRecurAnnualByDate(int freq, const QList<int>& months, int day, Preferences::Feb29Type, int count, const QDate& end);
+ 		bool               setRecurAnnualByPos(int freq, const QList<MonthPos>& pos, const QList<int>& months, int count, const QDate& end);
+ //		static QValueList<MonthPos> convRecurPos(const QValueList<KCal::RecurrenceRule::WDayPos>&);
++		void               adjustRecurrenceStartOfDay();
+ #ifdef NDEBUG
+ 		void               dumpDebug() const  { }
+ #else

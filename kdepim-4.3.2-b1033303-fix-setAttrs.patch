@@ -1,0 +1,43 @@
+# 
+# SVN commit 1033303 by tmcguire:
+# 
+# Backport r1033251 by tmcguire from trunk to the 4.3 branch:
+# 
+# SVN_MERGE
+# Merged revisions 1029749,1030448 via svnmerge from
+# svn+ssh://tmcguire@svn.kde.org/home/kde/branches/kdepim/enterprise4/kdepim
+# 
+# ........
+#  r1029749 | tmcguire | 2009-09-30 18:46:48 +0200 (Wed, 30 Sep 2009) | 3 lines
+# 
+#  Report the object class again, so we again detect distribution lists and can add domain names
+#  to the entries, for the email address.
+# ........
+#  r1030448 | tmcguire | 2009-10-02 12:06:40 +0200 (Fri, 02 Oct 2009) | 1 line
+# 
+#  No need to add the object class here, that is done in setAttrs() already.
+# ........
+# 
+
+Index: libkdepim/ldapclient.cpp
+===================================================================
+--- libkdepim/ldapclient.cpp	(révision 1033302)
++++ libkdepim/ldapclient.cpp	(révision 1033303)
+@@ -62,6 +62,7 @@
+ void LdapClient::setAttrs( const QStringList& attrs )
+ {
+   mAttrs = attrs;
++  mAttrs << "objectClass"; // via objectClass we detect distribution lists
+ }
+ 
+ void LdapClient::startQuery( const QString& filter )
+@@ -355,8 +356,7 @@
+         ldapClient->setCompletionWeight( completionWeight );
+ 
+       QStringList attrs;
+-      // note: we need "objectClass" to detect distribution lists
+-      attrs << "cn" << "mail" << "givenname" << "sn" << "objectClass";
++      attrs << "cn" << "mail" << "givenname" << "sn";
+       ldapClient->setAttrs( attrs );
+ 
+       connect( ldapClient, SIGNAL( result( const KPIM::LdapClient&, const KLDAP::LdapObject& ) ),

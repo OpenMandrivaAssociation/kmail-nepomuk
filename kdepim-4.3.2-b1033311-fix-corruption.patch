@@ -1,0 +1,47 @@
+# 
+# SVN commit 1033311 by tmcguire:
+# 
+# Backport r1033245 by tmcguire from trunk to the 4.3 branch:
+# 
+# SVN_MERGE
+# Merged revisions 1029649 via svnmerge from
+# svn+ssh://tmcguire@svn.kde.org/home/kde/branches/kdepim/enterprise4/kdepim
+# 
+# ................
+#  r1029649 | winterz | 2009-09-30 14:50:51 +0200 (Wed, 30 Sep 2009) | 12 lines
+# 
+#  Merged revisions 1029626 via svnmerge from
+#  https://svn.kde.org/home/kde/branches/kdepim/enterprise/kdepim
+# 
+#  ........
+#    r1029626 | mutz | 2009-09-30 08:00:03 -0400 (Wed, 30 Sep 2009) | 4 lines
+# 
+#    ISubject: iterate over a copy of the observerlist
+# 
+#    This prevents corruption of the iterators when attach() or detach() is called
+#    (indirectly) through one of our Observer::update() calls
+#  ........
+# ................
+#
+
+Index: kmail/isubject.cpp
+===================================================================
+--- kmail/isubject.cpp	(révision 1033310)
++++ kmail/isubject.cpp	(révision 1033311)
+@@ -25,12 +25,14 @@
+ 
+   void ISubject::notify()
+   {
+-    for ( QVector<Interface::Observer*>::iterator it = mObserverList.begin() ; it != mObserverList.end() ; ++it ) {
++    // iterate over a copy (to prevent crashes when
++    // {attach(),detach()} is called from an Observer::update()
++    const QVector<Interface::Observer*> copy = mObserverList;
++    for ( QVector<Interface::Observer*>::const_iterator it = copy.begin() ; it != copy.end() ; ++it ) {
+       if ( (*it) ) {
+         (*it)->update( this );
+       }
+     }
+   }
+-
+ }
+ 

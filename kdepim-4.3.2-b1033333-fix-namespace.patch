@@ -1,0 +1,19 @@
+#
+# SVN commit 1033333 by djarvie:
+# 
+# Nitpick
+# 
+
+Index: kalarm/karecurrence.cpp
+===================================================================
+--- kalarm/karecurrence.cpp	(révision 1033332)
++++ kalarm/karecurrence.cpp	(révision 1033333)
+@@ -154,7 +154,7 @@
+ 		}
+ 		mFeb29Type = feb29Type;
+ 	}
+-	KCal::Recurrence::setStartDateTime(startdt);   // sets recurrence all-day if date-only
++	Recurrence::setStartDateTime(startdt);   // sets recurrence all-day if date-only
+ 	return true;
+ }
+ 

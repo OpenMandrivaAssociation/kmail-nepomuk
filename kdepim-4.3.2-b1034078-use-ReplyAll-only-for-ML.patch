@@ -1,0 +1,26 @@
+# 
+# SVN commit 1034078 by mkoller:
+# 
+# Backport r1034077 by mkoller from trunk to the 4.3 branch:
+# 
+# CCBUG: 160215
+# 
+# On smart-reply, use the ReplyAll template only when it's a reply to a mailing list
+# 
+
+Index: kmail/kmmessage.cpp
+===================================================================
+--- kmail/kmmessage.cpp	(révision 1034077)
++++ kmail/kmmessage.cpp	(révision 1034078)
+@@ -659,8 +659,10 @@
+       toStr = headerField( "Mail-Followup-To" );
+     }
+     else if ( !replyToStr.isEmpty() ) {
+-      // assume a Reply-To header mangling mailing list
+       toStr = replyToStr;
++      // use the ReplyAll template only when it's a reply to a mailing list
++      if ( mailingListAddresses.isEmpty() )
++        replyAll = false;
+     }
+     else if ( !mailingListAddresses.isEmpty() ) {
+       toStr = mailingListAddresses[0];
