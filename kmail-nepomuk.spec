@@ -11,7 +11,7 @@ Release: %mkrel 4
 Epoch: 2
 Group: Graphical desktop/KDE
 License: GPL
-URL: http://pim.kde.org
+URL: https://pim.kde.org
 Source: ftp://ftp.kde.org/pub/kde/stable/%version/src/kdepim-%version.tar.bz2
 # Mandriva "customization" patches
 Patch0:   kdepim-4.2.95-kmail-first-message.patch 
