@@ -52,6 +52,7 @@ Patch130: kdepim-4.3.2-b1033731-fix-whatsthis.patch
 Patch131: kdepim-4.3.2-b1034078-use-ReplyAll-only-for-ML.patch
 
 Buildroot: %_tmppath/%name-%version-%release-root
+BuildRequires:	make
 BuildRequires: kdelibs4-devel >= 2:4.2.98
 BuildRequires: kdelibs4-experimental-devel >= 2:4.2.98
 BuildRequires: kdepimlibs4-devel >= 2:4.2.98
